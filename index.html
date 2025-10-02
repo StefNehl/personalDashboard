@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Tracker with Google Sheets</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>⏱️ Time Tracker</h1>
+        
+<!--        <div class="warning">-->
+<!--            <strong>Setup Required:</strong>-->
+<!--            Replace YOUR_CLIENT_ID_HERE in the code with your Google OAuth Client ID. -->
+<!--            <a href="https://console.cloud.google.com/" target="_blank">Get it here</a>-->
+<!--        </div>-->
+
+        <div class="auth-section">
+            <div id="signedOut">
+                <p style="margin-bottom: 15px; color: #666;">Sign in to sync your tasks with Google Sheets</p>
+                <button class="btn btn-google" onclick="handleSignIn()">
+                    Sign in with Google
+                </button>
+            </div>
+            <div id="signedIn" style="display: none;">
+                <div class="user-info">
+                    <span>Signed in as: <span class="user-email" id="userEmail"></span></span>
+                </div>
+                <button class="btn btn-logout" onclick="handleSignOut()">Sign Out</button>
+                <div class="sync-status" id="syncStatus"></div>
+            </div>
+        </div>
+
+        <div id="appContent" class="disabled">
+            <div class="input-section">
+                <input 
+                    type="text" 
+                    id="taskInput" 
+                    placeholder="Enter task name..."
+                    autocomplete="off"
+                >
+                <button class="btn btn-primary" onclick="addTask()">Add Task</button>
+            </div>
+
+            <ul class="task-list" id="taskList">
+                <div class="empty-state">
+                    <p>No tasks yet. Add one to get started!</p>
+                </div>
+            </ul>
+        </div>
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="script.js"></script>
+</body>
+</html>
