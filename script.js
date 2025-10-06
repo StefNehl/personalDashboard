@@ -143,14 +143,16 @@ async function loadTasksFromSheet() {
 
 async function saveTasksToSheet() {
     if (!spreadsheetId || !accessToken) return;
-
     try {
-        const values = tasks.map(task => [
+        const values = tasks
+            .filter(task =>  task.isRunning)
+            .map(task => [
             task.id,
             task.name,
             Math.floor(task.elapsed / 1000)
         ]);
 
+        updateSyncStatus('Start syncing');
         await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Tasks!A2:C?valueInputOption=RAW`,
             {
@@ -295,4 +297,5 @@ document.getElementById('taskInput').addEventListener('keypress', (e) => {
 window.onload = () => {
     initializeGoogleAuth();
     renderTasks();
+    setInterval(saveTasksToSheet, 10000);
 };
