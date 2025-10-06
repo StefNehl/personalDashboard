@@ -1,69 +1,17 @@
-// REPLACE THIS WITH YOUR GOOGLE OAUTH CLIENT ID
-const CLIENT_ID = '856828042385-77s8aigmq798rp3puhcj02mp3pib8js7.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
-
-let tokenClient;
-let accessToken = null;
+// Application state
 let spreadsheetId = null;
 let tasks = [];
 let timerIntervals = {};
 
-// Initialize Google Identity Services
-function initializeGoogleAuth() {
-    tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPES,
-        callback: (response) => {
-            if (response.access_token) {
-                accessToken = response.access_token;
-                onSignIn();
-            }
-        },
-    });
-}
-
-function handleSignIn() {
-    tokenClient.requestAccessToken();
-}
-
-function handleSignOut() {
-    accessToken = null;
-    spreadsheetId = null;
-    tasks = [];
-    document.getElementById('signedOut').style.display = 'block';
-    document.getElementById('signedIn').style.display = 'none';
-    document.getElementById('appContent').classList.add('disabled');
-    document.getElementById('userEmail').textContent = '';
-    renderTasks();
-}
-
-async function onSignIn() {
-    document.getElementById('signedOut').style.display = 'none';
-    document.getElementById('signedIn').style.display = 'block';
-    document.getElementById('appContent').classList.remove('disabled');
-
-    // Get user info
-    const userInfo = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: { Authorization: `Bearer ${accessToken}` }
-    }).then(r => r.json());
-
-    document.getElementById('userEmail').textContent = userInfo.email;
-
-    // Create or find spreadsheet
-    await initializeSpreadsheet();
-
-    // Load tasks
-    await loadTasksFromSheet();
-}
-
 async function initializeSpreadsheet() {
     try {
+        await ensureValidToken();
         updateSyncStatus('Initializing spreadsheet...');
 
         // Search for existing spreadsheet
         const searchResponse = await fetch(
             `https://www.googleapis.com/drive/v3/files?q=name='Time Tracker Data' and mimeType='application/vnd.google-apps.spreadsheet'`,
-            { headers: { Authorization: `Bearer ${accessToken}` } }
+            { headers: { Authorization: `Bearer ${getAccessToken()}` } }
         );
         const searchData = await searchResponse.json();
 
@@ -77,7 +25,7 @@ async function initializeSpreadsheet() {
                 {
                     method: 'POST',
                     headers: {
-                        Authorization: `Bearer ${accessToken}`,
+                        Authorization: `Bearer ${getAccessToken()}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
@@ -97,7 +45,7 @@ async function initializeSpreadsheet() {
                 {
                     method: 'PUT',
                     headers: {
-                        Authorization: `Bearer ${accessToken}`,
+                        Authorization: `Bearer ${getAccessToken()}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
@@ -116,10 +64,11 @@ async function initializeSpreadsheet() {
 
 async function loadTasksFromSheet() {
     try {
+        await ensureValidToken();
         updateSyncStatus('Loading tasks...');
         const response = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Tasks!A2:C`,
-            { headers: { Authorization: `Bearer ${accessToken}` } }
+            { headers: { Authorization: `Bearer ${getAccessToken()}` } }
         );
         const data = await response.json();
 
@@ -141,9 +90,15 @@ async function loadTasksFromSheet() {
     }
 }
 
-async function saveTasksToSheet() {
-    if (!spreadsheetId || !accessToken) return;
+async function saveTasksToSheet(tryCount = 0) {
+    if (!spreadsheetId || !getAccessToken()) return;
     try {
+        await ensureValidToken();
+        
+        if (tryCount > 3) {
+            throw new Error('Sync failed after 3 attempts');
+        }
+
         const values = tasks
             .filter(task =>  task.isRunning)
             .map(task => [
@@ -153,17 +108,25 @@ async function saveTasksToSheet() {
         ]);
 
         updateSyncStatus('Start syncing');
-        await fetch(
+        const response = await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Tasks!A2:C?valueInputOption=RAW`,
             {
                 method: 'PUT',
                 headers: {
-                    Authorization: `Bearer ${accessToken}`,
+                    Authorization: `Bearer ${getAccessToken()}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ values })
             }
         );
+
+        // Handle 401 Unauthorized - token might be invalid
+        if (response.status === 401) {
+            await refreshAccessToken();
+            // Retry the request
+            await saveTasksToSheet(tryCount + 1);
+            return;
+        }
 
         updateSyncStatus('Synced ✓');
     } catch (error) {
@@ -294,8 +257,12 @@ document.getElementById('taskInput').addEventListener('keypress', (e) => {
 });
 
 // Initialize on load
-window.onload = () => {
+window.onload = async () => {
     initializeGoogleAuth();
     renderTasks();
+
+    // Try to restore session from localStorage
+    await restoreSession();
+
     setInterval(saveTasksToSheet, 10000);
 };
