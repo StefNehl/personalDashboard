@@ -91,9 +91,6 @@ class DriveDataService {
         const headersCorrect = validateHeaderExact(headers);
         if (headersCorrect === false) {
             const schemaKeys = Object.keys(TaskDataSchema);
-            console.log(schemaKeys)
-            
-            // Add headers
             await fetch(
                 `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A1:1?valueInputOption=RAW`,
                 {
@@ -151,23 +148,50 @@ class DriveDataService {
      */
     async loadTasks() {
         const tasks = [];
+        const schemaKeys = Object.keys(TaskDataSchema);
+        const lastColumn = String.fromCharCode(65 + schemaKeys.length - 1); // A + length - 1
+
         const response = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A2:C`,
+            `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A2:${lastColumn}`,
             { headers: { Authorization: `Bearer ${this.accessToken}` } }
         );
         const data = await response.json();
         if (data.values) {
-            tasks.push(...data.values.map(row => ({
-                id: parseInt(row[0]),
-                name: row[1],
-                elapsed: parseInt(row[2]) * 1000,
-                isRunning: false,
-                startTime: null,
-                startDateTime: null,
-                isFinished: false
-            })));
+            tasks.push(...data.values
+                .map(row => {
+                    if (!row) return null;
+                    return this.convertRowValuesToTask(row);})
+                .filter(task => task !== null)
+            );
         }
         return tasks;
+    }
+
+    /**
+     * @param {string[]} row 
+     * @returns {TaskData}
+     */
+    convertRowValuesToTask(row) {
+        const task = {};
+        const schemaKeys = Object.keys(TaskDataSchema);
+        schemaKeys.forEach((key, index) => {
+            let value = row[index];
+            // Convert values from storage
+            if (key === 'id') {
+                task[key] = parseInt(value);
+            } else if (key === 'elapsed') {
+                task[key] = parseInt(value) * 1000;
+            } else if (key === 'isRunning' || key === 'isFinished') {
+                task[key] = value === 'true' || value === true;
+            } else if (key === 'startTime') {
+                task[key] = value ? parseInt(value) : null;
+            } else if (key === 'startDateTime') {
+                task[key] = value ? new Date(value) : null;
+            } else {
+                task[key] = value || null;
+            }
+        });
+        return task;
     }
 
     /**
@@ -175,16 +199,19 @@ class DriveDataService {
      * @returns {Promise<Response>}
      */
     async syncTasks(tasks) {
+        const schemaKeys = Object.keys(TaskDataSchema);
         const values = tasks
-            .filter(task => !task.isRunning)
-            .map(task => [
-                task.id,
-                task.name,
-                Math.floor(task.elapsed / 1000),
-            ]);
+            .map(task => schemaKeys.map(key => {
+                // Convert values for storage
+                if (key === 'elapsed') {
+                    return Math.floor(task[key] / 1000);
+                }
+                return task[key];
+            }));
 
+        const lastColumn = String.fromCharCode(65 + schemaKeys.length - 1); // A + length - 1
         return await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A2:C?valueInputOption=RAW`,
+            `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A2:${lastColumn}?valueInputOption=RAW`,
             {
                 method: 'PUT',
                 headers: {
