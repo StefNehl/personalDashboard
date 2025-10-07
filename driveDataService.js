@@ -200,6 +200,21 @@ class DriveDataService {
      */
     async syncTasks(tasks) {
         const schemaKeys = Object.keys(TaskDataSchema);
+        const lastColumn = String.fromCharCode(65 + schemaKeys.length - 1); // A + length - 1
+
+        // Clear existing task data (from row 2 onwards)
+        await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A2:${lastColumn}:clear`,
+            {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${this.accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        // Upload client data
         const values = tasks
             .map(task => schemaKeys.map(key => {
                 // Convert values for storage
@@ -209,7 +224,6 @@ class DriveDataService {
                 return task[key];
             }));
 
-        const lastColumn = String.fromCharCode(65 + schemaKeys.length - 1); // A + length - 1
         return await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A2:${lastColumn}?valueInputOption=RAW`,
             {
