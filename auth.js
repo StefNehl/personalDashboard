@@ -34,7 +34,6 @@ function handleSignOut() {
     accessToken = null;
     tokenExpiry = null;
     spreadsheetId = null;
-    tasks = [];
     localStorage.removeItem('accessToken');
     localStorage.removeItem('tokenExpiry');
 

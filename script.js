@@ -1,5 +1,5 @@
 // Application state
-let tasks = [];
+let tasks = undefined;
 let timerIntervals = {};
 let dataService = null;
 
@@ -32,6 +32,10 @@ async function saveTasksToSheet() {
         await ensureValidToken();
         updateSyncStatus('Start syncing');
         
+        if (!tasks) {
+            updateSyncStatus('Tasks not loaded.');
+            return;
+        }
         for (let tryCount = 0; tryCount < 3; tryCount++) {
             const response = await dataService.syncTasks(tasks);
             if (response.status === 401) {
@@ -70,7 +74,8 @@ async function addTask() {
         currentStartTime: null,
         startDateTime: null,
         isFinished: false,
-        finishedDateTime: null
+        finishedDateTime: null,
+        isDeleted: false
     };
 
     tasks.push(task);
@@ -116,12 +121,15 @@ async function stopTimer(taskId) {
 }
 
 async function deleteTask(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
     if (timerIntervals[taskId]) {
         clearInterval(timerIntervals[taskId]);
         delete timerIntervals[taskId];
     }
 
-    tasks = tasks.filter(t => t.id !== taskId);
+    task.isDeleted = true;
     renderTasks();
     await saveTasksToSheet();
 }
@@ -156,8 +164,8 @@ function renderTasks() {
     const activeTaskList = document.getElementById('activeTaskList');
     const finishedTaskList = document.getElementById('finishedTaskList');
 
-    const activeTasks = tasks.filter(task => !task.isFinished);
-    const finishedTasks = tasks.filter(task => task.isFinished);
+    const activeTasks = tasks?.filter(task => !task.isFinished && !task.isDeleted) ?? [];
+    const finishedTasks = tasks?.filter(task => task.isFinished && !task.isDeleted) ?? [];
 
     // Render active tasks
     if (activeTasks.length === 0) {

@@ -8,6 +8,7 @@
  * @property {Date | null} startDateTime
  * @property {boolean} isFinished
  * @property {Date | null} finishedDateTime
+ * @property {boolean} isDeleted
  */
 
 /**
@@ -22,7 +23,8 @@ const TaskDataSchema = {
     currentStartTime: 'number | null',
     startDateTime: 'Date | null',
     isFinished: 'boolean',
-    finishedDateTime: 'Date | null'
+    finishedDateTime: 'Date | null',
+    isDeleted: 'boolean'
 };
 
 /**
@@ -183,7 +185,7 @@ class DriveDataService {
                 task[key] = parseInt(value);
             } else if (key === 'elapsed') {
                 task[key] = parseInt(value) * 1000;
-            } else if (key === 'isRunning' || key === 'isFinished') {
+            } else if (key === 'isRunning' || key === 'isFinished' || key === 'isDeleted') {
                 task[key] = value === 'TRUE' || value === true;
             } else if (key === 'currentStartTime') {
                 task[key] = value ? parseInt(value) : null;
