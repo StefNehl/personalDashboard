@@ -67,7 +67,10 @@ async function addTask() {
         name: taskName,
         elapsed: 0,
         isRunning: false,
-        startTime: null
+        currentStartTime: null,
+        startDateTime: null,
+        isFinished: false,
+        finishedDateTime: null
     };
 
     tasks.push(task);
@@ -81,11 +84,14 @@ function startTimer(taskId) {
     if (!task) return;
 
     task.isRunning = true;
-    task.startTime = Date.now();
+    task.currentStartTime = Date.now();
+    if (!task.startDateTime) {
+        task.startDateTime = new Date();
+    }
 
     timerIntervals[taskId] = setInterval(() => {
         const now = Date.now();
-        const elapsed = task.elapsed + (now - task.startTime);
+        const elapsed = task.elapsed + (now - task.currentStartTime);
         updateTaskDisplay(taskId, elapsed);
     }, 100);
 
@@ -99,8 +105,8 @@ async function stopTimer(taskId) {
 
     task.isRunning = false;
     const now = Date.now();
-    task.elapsed += (now - task.startTime);
-    task.startTime = null;
+    task.elapsed += (now - task.currentStartTime);
+    task.currentStartTime = null;
 
     clearInterval(timerIntervals[taskId]);
     delete timerIntervals[taskId];
@@ -125,6 +131,7 @@ async function finishTask(taskId) {
     if (!task) return;
     await stopTimer(taskId);
     task.isFinished = true;
+    task.finishedDateTime = new Date();
     renderTasks();
     await saveTasksToSheet();
 }

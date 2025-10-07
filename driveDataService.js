@@ -2,11 +2,12 @@
  * @typedef {Object} TaskData
  * @property {number} id
  * @property {string} name
- * @property {number} elapsed
+ * @property {number} elapsed - Total accumulated time
  * @property {boolean} isRunning
- * @property {number | null} startTime
+ * @property {number | null} currentStartTime
  * @property {Date | null} startDateTime
  * @property {boolean} isFinished
+ * @property {Date | null} finishedDateTime
  */
 
 /**
@@ -18,9 +19,10 @@ const TaskDataSchema = {
     name: 'string',
     elapsed: 'number',
     isRunning: 'boolean',
-    startTime: 'number | null',
+    currentStartTime: 'number | null',
     startDateTime: 'Date | null',
-    isFinished: 'boolean'
+    isFinished: 'boolean',
+    finishedDateTime: 'Date | null'
 };
 
 /**
@@ -183,9 +185,9 @@ class DriveDataService {
                 task[key] = parseInt(value) * 1000;
             } else if (key === 'isRunning' || key === 'isFinished') {
                 task[key] = value === 'true' || value === true;
-            } else if (key === 'startTime') {
+            } else if (key === 'currentStartTime') {
                 task[key] = value ? parseInt(value) : null;
-            } else if (key === 'startDateTime') {
+            } else if (key === 'startDateTime' || key === 'finishedDateTime') {
                 task[key] = value ? new Date(value) : null;
             } else {
                 task[key] = value || null;
