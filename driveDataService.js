@@ -200,9 +200,10 @@ class DriveDataService {
 
     /**
      * @param {TaskData[]} tasks
-     * @returns {Promise<Response>}
+     * @returns {Promise<Response | null>}
      */
     async syncTasks(tasks) {
+        if (!tasks || tasks.length === 0) return null;
         const schemaKeys = Object.keys(TaskDataSchema);
         const lastColumn = String.fromCharCode(65 + schemaKeys.length - 1); // A + length - 1
 

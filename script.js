@@ -38,6 +38,10 @@ async function saveTasksToSheet() {
         }
         for (let tryCount = 0; tryCount < 3; tryCount++) {
             const response = await dataService.syncTasks(tasks);
+            if (!response) {
+                updateSyncStatus('Sync failed.');
+                return;
+            }
             if (response.status === 401) {
                 await refreshAccessToken();
             }
