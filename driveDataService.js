@@ -184,7 +184,7 @@ class DriveDataService {
             } else if (key === 'elapsed') {
                 task[key] = parseInt(value) * 1000;
             } else if (key === 'isRunning' || key === 'isFinished') {
-                task[key] = value === 'true' || value === true;
+                task[key] = value === 'TRUE' || value === true;
             } else if (key === 'currentStartTime') {
                 task[key] = value ? parseInt(value) : null;
             } else if (key === 'startDateTime' || key === 'finishedDateTime') {
