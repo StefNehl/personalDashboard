@@ -96,7 +96,7 @@ async function onSignIn() {
         document.getElementById('userEmail').textContent = userInfo.email;
 
         // Create or find spreadsheet
-        await initializeSpreadsheet();
+        await initDataService();
 
         // Load tasks
         await loadTasksFromSheet();

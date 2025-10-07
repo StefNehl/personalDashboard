@@ -1,59 +1,13 @@
 // Application state
-let spreadsheetId = null;
 let tasks = [];
 let timerIntervals = {};
+let dataService = null;
 
-async function initializeSpreadsheet() {
+async function initDataService() {
     try {
         await ensureValidToken();
-        updateSyncStatus('Initializing spreadsheet...');
-
-        // Search for existing spreadsheet
-        const searchResponse = await fetch(
-            `https://www.googleapis.com/drive/v3/files?q=name='Time Tracker Data' and mimeType='application/vnd.google-apps.spreadsheet'`,
-            { headers: { Authorization: `Bearer ${getAccessToken()}` } }
-        );
-        const searchData = await searchResponse.json();
-
-        if (searchData.files && searchData.files.length > 0) {
-            spreadsheetId = searchData.files[0].id;
-            updateSyncStatus('Connected to existing spreadsheet ✓');
-        } else {
-            // Create new spreadsheet
-            const createResponse = await fetch(
-                'https://sheets.googleapis.com/v4/spreadsheets',
-                {
-                    method: 'POST',
-                    headers: {
-                        Authorization: `Bearer ${getAccessToken()}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        properties: { title: 'Time Tracker Data' },
-                        sheets: [{
-                            properties: { title: 'Tasks' }
-                        }]
-                    })
-                }
-            );
-            const createData = await createResponse.json();
-            spreadsheetId = createData.spreadsheetId;
-
-            // Add headers
-            await fetch(
-                `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Tasks!A1:C1?valueInputOption=RAW`,
-                {
-                    method: 'PUT',
-                    headers: {
-                        Authorization: `Bearer ${getAccessToken()}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        values: [['Task ID', 'Task Name', 'Total Time (seconds)']]
-                    })
-                }
-            );
-
+        const result = await dataService.initDataService(getAccessToken());
+        if (result) {
             updateSyncStatus('Created new spreadsheet ✓');
         }
     } catch (error) {
@@ -66,22 +20,7 @@ async function loadTasksFromSheet() {
     try {
         await ensureValidToken();
         updateSyncStatus('Loading tasks...');
-        const response = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Tasks!A2:C`,
-            { headers: { Authorization: `Bearer ${getAccessToken()}` } }
-        );
-        const data = await response.json();
-
-        if (data.values) {
-            tasks = data.values.map(row => ({
-                id: parseInt(row[0]),
-                name: row[1],
-                elapsed: parseInt(row[2]) * 1000,
-                isRunning: false,
-                startTime: null
-            }));
-        }
-
+        tasks = await dataService.loadTasks();
         renderTasks();
         updateSyncStatus('Tasks loaded ✓');
     } catch (error) {
@@ -90,45 +29,22 @@ async function loadTasksFromSheet() {
     }
 }
 
-async function saveTasksToSheet(tryCount = 0) {
-    if (!spreadsheetId || !getAccessToken()) return;
+async function saveTasksToSheet() {
     try {
         await ensureValidToken();
-        
-        if (tryCount > 3) {
-            throw new Error('Sync failed after 3 attempts');
-        }
-
-        const values = tasks
-            .filter(task =>  task.isRunning)
-            .map(task => [
-            task.id,
-            task.name,
-            Math.floor(task.elapsed / 1000)
-        ]);
-
         updateSyncStatus('Start syncing');
-        const response = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Tasks!A2:C?valueInputOption=RAW`,
-            {
-                method: 'PUT',
-                headers: {
-                    Authorization: `Bearer ${getAccessToken()}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ values })
+        
+        for (let tryCount = 0; tryCount < 3; tryCount++) {
+            const response = await dataService.syncTasks(tasks);
+            if (response.status === 401) {
+                await refreshAccessToken();
             }
-        );
-
-        // Handle 401 Unauthorized - token might be invalid
-        if (response.status === 401) {
-            await refreshAccessToken();
-            // Retry the request
-            await saveTasksToSheet(tryCount + 1);
-            return;
+            if (response.status === 200) {
+                updateSyncStatus('Synced ✓');
+                return;
+            }
         }
-
-        updateSyncStatus('Synced ✓');
+        updateSyncStatus('Sync failed after 3 tries!');
     } catch (error) {
         console.error('Error saving tasks:', error);
         updateSyncStatus('Sync error');
@@ -139,7 +55,7 @@ function updateSyncStatus(message) {
     document.getElementById('syncStatus').textContent = message;
 }
 
-function addTask() {
+async function addTask() {
     const input = document.getElementById('taskInput');
     const taskName = input.value.trim();
 
@@ -159,7 +75,7 @@ function addTask() {
     tasks.push(task);
     input.value = '';
     renderTasks();
-    saveTasksToSheet();
+    await saveTasksToSheet();
 }
 
 function startTimer(taskId) {
@@ -178,7 +94,7 @@ function startTimer(taskId) {
     renderTasks();
 }
 
-function stopTimer(taskId) {
+async function stopTimer(taskId) {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
@@ -191,10 +107,10 @@ function stopTimer(taskId) {
     delete timerIntervals[taskId];
 
     renderTasks();
-    saveTasksToSheet();
+    await saveTasksToSheet();
 }
 
-function deleteTask(taskId) {
+async function deleteTask(taskId) {
     if (timerIntervals[taskId]) {
         clearInterval(timerIntervals[taskId]);
         delete timerIntervals[taskId];
@@ -202,7 +118,7 @@ function deleteTask(taskId) {
 
     tasks = tasks.filter(t => t.id !== taskId);
     renderTasks();
-    saveTasksToSheet();
+    await saveTasksToSheet();
 }
 
 function formatTime(ms) {
@@ -250,18 +166,17 @@ function renderTasks() {
     `).join('');
 }
 
-document.getElementById('taskInput').addEventListener('keypress', (e) => {
+document.getElementById('taskInput').addEventListener('keypress', async (e) => {
     if (e.key === 'Enter') {
-        addTask();
+        await addTask();
     }
 });
 
 // Initialize on load
 window.onload = async () => {
+    dataService = await getInstance();
     initializeGoogleAuth();
     renderTasks();
-
-    // Try to restore session from localStorage
     await restoreSession();
 
     setInterval(saveTasksToSheet, 10000);
