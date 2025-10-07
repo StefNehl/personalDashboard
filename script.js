@@ -7,9 +7,7 @@ async function initDataService() {
     try {
         await ensureValidToken();
         const result = await dataService.initDataService(getAccessToken());
-        if (result) {
-            updateSyncStatus('Created new spreadsheet ✓');
-        }
+        updateSyncStatus(result);
     } catch (error) {
         console.error('Error initializing spreadsheet:', error);
         updateSyncStatus('Error: Could not initialize spreadsheet');
@@ -97,6 +95,7 @@ function startTimer(taskId) {
 async function stopTimer(taskId) {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
+    if (task.isRunning === false) return;
 
     task.isRunning = false;
     const now = Date.now();
@@ -117,6 +116,15 @@ async function deleteTask(taskId) {
     }
 
     tasks = tasks.filter(t => t.id !== taskId);
+    renderTasks();
+    await saveTasksToSheet();
+}
+
+async function finishTask(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    await stopTimer(taskId);
+    task.isFinished = true;
     renderTasks();
     await saveTasksToSheet();
 }
@@ -161,6 +169,7 @@ function renderTasks() {
                     : `<button class="btn btn-start" onclick="startTimer(${task.id})">Start</button>`
                 }
                 <button class="btn btn-delete" onclick="deleteTask(${task.id})">Delete</button>
+                <button class="btn btn-finish" onclick="finishTask(${task.id})">Finish</button>
             </div>
         </li>
     `).join('');

@@ -6,6 +6,27 @@
  * @property {boolean} isRunning
  * @property {number | null} startTime
  * @property {Date | null} startDateTime
+ * @property {boolean} isFinished
+ */
+
+/**
+ * Runtime schema for TaskData
+ * @type {Object.<string, string>}
+ */
+const TaskDataSchema = {
+    id: 'number',
+    name: 'string',
+    elapsed: 'number',
+    isRunning: 'boolean',
+    startTime: 'number | null',
+    startDateTime: 'Date | null',
+    isFinished: 'boolean'
+};
+
+/**
+ * @typedef {Object} InitResponse
+ * @property {boolean} createdDataSheet
+ * @property {boolean} syncedHeaders
  */
 
 /**
@@ -13,6 +34,16 @@
  */
 function getInstance() {
     return new DriveDataService();
+}
+
+/**
+ * @param headers
+ * @returns {boolean}
+ */
+function validateHeaderExact(headers) {
+    const schemaKeys = Object.keys(TaskDataSchema);
+    return headers.length === schemaKeys.length &&
+        headers.every((header, i) => header === schemaKeys[i]);
 }
 
 class DriveDataService {
@@ -26,12 +57,15 @@ class DriveDataService {
     /**
      * Initialize the data service
      * @param {string} accessToken
-     * @returns {Promise<boolean>} Returns true if a data sheet was created, false if it already exists
+     * @returns {Promise<InitResponse>} Returns true if a data sheet was created, false if it already exists
      */
     async initDataService(accessToken) {
         this.accessToken = accessToken;
-
         this.spreadsheetId = await this.getSpreadSheetId();
+        
+        let initSpreadSheet = false;
+        let initHeaders = false;
+        
         if (!this.spreadsheetId) {
             const createResponse = await fetch(
                 'https://sheets.googleapis.com/v4/spreadsheets',
@@ -42,19 +76,26 @@ class DriveDataService {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        properties: { title: 'Time Tracker Data' },
+                        properties: {title: 'Time Tracker Data'},
                         sheets: [{
-                            properties: { title: 'Tasks' }
+                            properties: {title: 'Tasks'}
                         }]
                     })
                 }
             );
             const createData = await createResponse.json();
             this.spreadsheetId = createData.spreadsheetId;
-
+            initSpreadSheet = true;
+        }
+        const headers = await this.getHeaders();
+        const headersCorrect = validateHeaderExact(headers);
+        if (headersCorrect === false) {
+            const schemaKeys = Object.keys(TaskDataSchema);
+            console.log(schemaKeys)
+            
             // Add headers
             await fetch(
-                `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A1:C1?valueInputOption=RAW`,
+                `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A1:1?valueInputOption=RAW`,
                 {
                     method: 'PUT',
                     headers: {
@@ -62,13 +103,31 @@ class DriveDataService {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        values: [['Task ID', 'Task Name', 'Total Time (seconds)']]
+                        values: [schemaKeys]
                     })
                 }
             );
-            return true;
+            initHeaders = true;
         }
-        return false;
+        return {
+            createdDataSheet: initSpreadSheet,
+            syncedHeaders: initHeaders
+        };
+    }
+    
+    /**
+     * @returns {Promise<string[]>}
+     */
+    async getHeaders() {
+        const response = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A1:1`,
+            {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${this.accessToken}`,},
+            }
+        );
+        const data = await response.json();
+        return data.values;
     }
 
 
@@ -104,7 +163,8 @@ class DriveDataService {
                 elapsed: parseInt(row[2]) * 1000,
                 isRunning: false,
                 startTime: null,
-                startDateTime: null
+                startDateTime: null,
+                isFinished: false
             })));
         }
         return tasks;
@@ -120,10 +180,10 @@ class DriveDataService {
             .map(task => [
                 task.id,
                 task.name,
-                Math.floor(task.elapsed / 1000)
+                Math.floor(task.elapsed / 1000),
             ]);
 
-        const response = await fetch(
+        return await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A2:C?valueInputOption=RAW`,
             {
                 method: 'PUT',
@@ -134,6 +194,5 @@ class DriveDataService {
                 body: JSON.stringify({ values })
             }
         );
-        return response;
     }
 }
