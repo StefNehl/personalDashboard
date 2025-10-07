@@ -153,33 +153,58 @@ function updateTaskDisplay(taskId, elapsed) {
 }
 
 function renderTasks() {
-    const taskList = document.getElementById('taskList');
+    const activeTaskList = document.getElementById('activeTaskList');
+    const finishedTaskList = document.getElementById('finishedTaskList');
 
-    if (tasks.length === 0) {
-        taskList.innerHTML = `
+    const activeTasks = tasks.filter(task => !task.isFinished);
+    const finishedTasks = tasks.filter(task => task.isFinished);
+
+    // Render active tasks
+    if (activeTasks.length === 0) {
+        activeTaskList.innerHTML = `
             <div class="empty-state">
-                <p>No tasks yet. Add one to get started!</p>
+                <p>No active tasks yet. Add one to get started!</p>
             </div>
         `;
-        return;
+    } else {
+        activeTaskList.innerHTML = activeTasks.map(task => `
+            <li class="task-item ${task.isRunning ? 'running' : ''}">
+                <div class="task-info">
+                    <div class="task-name">${task.name}</div>
+                    <div class="task-time" id="time-${task.id}">${formatTime(task.elapsed)}</div>
+                </div>
+                <div class="task-actions">
+                    ${task.isRunning
+                        ? `<button class="btn btn-stop" onclick="stopTimer(${task.id})">Stop</button>`
+                        : `<button class="btn btn-start" onclick="startTimer(${task.id})">Start</button>`
+                    }
+                    <button class="btn btn-delete" onclick="deleteTask(${task.id})">Delete</button>
+                    <button class="btn btn-finish" onclick="finishTask(${task.id})">Finish</button>
+                </div>
+            </li>
+        `).join('');
     }
 
-    taskList.innerHTML = tasks.map(task => `
-        <li class="task-item ${task.isRunning ? 'running' : ''}">
-            <div class="task-info">
-                <div class="task-name">${task.name}</div>
-                <div class="task-time" id="time-${task.id}">${formatTime(task.elapsed)}</div>
+    // Render finished tasks
+    if (finishedTasks.length === 0) {
+        finishedTaskList.innerHTML = `
+            <div class="empty-state">
+                <p>No finished tasks yet.</p>
             </div>
-            <div class="task-actions">
-                ${task.isRunning
-                    ? `<button class="btn btn-stop" onclick="stopTimer(${task.id})">Stop</button>`
-                    : `<button class="btn btn-start" onclick="startTimer(${task.id})">Start</button>`
-                }
-                <button class="btn btn-delete" onclick="deleteTask(${task.id})">Delete</button>
-                <button class="btn btn-finish" onclick="finishTask(${task.id})">Finish</button>
-            </div>
-        </li>
-    `).join('');
+        `;
+    } else {
+        finishedTaskList.innerHTML = finishedTasks.map(task => `
+            <li class="task-item">
+                <div class="task-info">
+                    <div class="task-name">${task.name}</div>
+                    <div class="task-time">${formatTime(task.elapsed)}</div>
+                </div>
+                <div class="task-actions">
+                    <button class="btn btn-delete" onclick="deleteTask(${task.id})">Delete</button>
+                </div>
+            </li>
+        `).join('');
+    }
 }
 
 document.getElementById('taskInput').addEventListener('keypress', async (e) => {

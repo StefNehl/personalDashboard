@@ -19,7 +19,7 @@ body {
     border-radius: 16px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     padding: 30px;
-    max-width: 600px;
+    max-width: 1200px;
     width: 100%;
 }
 
@@ -235,4 +235,24 @@ h1 {
 .warning strong {
     display: block;
     margin-bottom: 5px;
+}
+
+.task-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.task-column h2 {
+    color: #2d3748;
+    font-size: 20px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+@media (max-width: 768px) {
+    .task-columns {
+        grid-template-columns: 1fr;
+    }
 }

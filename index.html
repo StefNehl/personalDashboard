@@ -28,20 +28,33 @@
 
         <div id="appContent" class="disabled">
             <div class="input-section">
-                <input 
-                    type="text" 
-                    id="taskInput" 
+                <input
+                    type="text"
+                    id="taskInput"
                     placeholder="Enter task name..."
                     autocomplete="off"
                 >
                 <button class="btn btn-primary" onclick="addTask()">Add Task</button>
             </div>
 
-            <ul class="task-list" id="taskList">
-                <div class="empty-state">
-                    <p>No tasks yet. Add one to get started!</p>
+            <div class="task-columns">
+                <div class="task-column">
+                    <h2>Active Tasks</h2>
+                    <ul class="task-list" id="activeTaskList">
+                        <div class="empty-state">
+                            <p>No active tasks yet. Add one to get started!</p>
+                        </div>
+                    </ul>
                 </div>
-            </ul>
+                <div class="task-column">
+                    <h2>Finished Tasks</h2>
+                    <ul class="task-list" id="finishedTaskList">
+                        <div class="empty-state">
+                            <p>No finished tasks yet.</p>
+                        </div>
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 
