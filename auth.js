@@ -1,6 +1,6 @@
 // Google OAuth Configuration
 const CLIENT_ID = '856828042385-77s8aigmq798rp3puhcj02mp3pib8js7.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
 
 let tokenClient;
 let accessToken = null;
