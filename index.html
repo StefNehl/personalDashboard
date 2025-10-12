@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Time Tracker with Google Sheets</title>
-    <link rel="colorNames" href="color-variables.css">
+    <link rel="stylesheet" href="color-variables.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -20,7 +20,7 @@
             </div>
             <div id="signedIn" style="display: none;">
                 <div class="user-info">
-                    <span>Signed in as: <span class="user-email" id="userEmail"></span></span>
+                    <span class="user-email">Signed in as: <span class="user-email" id="userEmail"></span></span>
                 </div>
                 <button class="btn btn-logout" onclick="handleSignOut()">Sign Out</button>
                 <div class="sync-status" id="syncStatus"></div>
