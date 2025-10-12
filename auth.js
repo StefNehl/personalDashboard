@@ -27,6 +27,7 @@ function initializeGoogleAuth() {
 
 function handleSignIn() {
     tokenClient.requestAccessToken();
+    setInterval(saveTasksToSheet, 10000);
 }
 
 function handleSignOut() {

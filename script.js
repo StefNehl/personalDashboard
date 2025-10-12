@@ -31,7 +31,6 @@ async function saveTasksToSheet() {
     try {
         await ensureValidToken();
         updateSyncStatus('Start syncing');
-        
         if (!tasks) {
             updateSyncStatus('Tasks not loaded.');
             return;
@@ -232,5 +231,4 @@ window.onload = async () => {
     renderTasks();
     await restoreSession();
 
-    setInterval(saveTasksToSheet, 10000);
 };
