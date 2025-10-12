@@ -2,6 +2,8 @@
 let tasks = undefined;
 let timerIntervals = {};
 let dataService = null;
+let lastSync = null;
+const syncIntervalInSeconds = 1;
 
 async function initDataService() {
     try {
@@ -28,6 +30,10 @@ async function loadTasksFromSheet() {
 }
 
 async function saveTasksToSheet() {
+    if (!lastSync) {
+        const diffTime = new Date() - lastSync;
+        if (diffTime < syncIntervalInSeconds * 1000) return;
+    }
     try {
         await ensureValidToken();
         updateSyncStatus('Start syncing');
@@ -39,13 +45,13 @@ async function saveTasksToSheet() {
             const response = await dataService.syncTasks(tasks);
             if (!response) {
                 updateSyncStatus('Sync failed.');
-                return;
             }
             if (response.status === 401) {
                 await refreshAccessToken();
             }
             if (response.status === 200) {
                 updateSyncStatus('Synced ✓');
+                lastSync = new Date();
                 return;
             }
         }
