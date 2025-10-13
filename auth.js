@@ -25,12 +25,12 @@ function initializeGoogleAuth() {
     });
 }
 
-function handleSignIn() {
+function signIn() {
     tokenClient.requestAccessToken();
-    setInterval(saveTasksToSheet, 10000);
 }
 
-function handleSignOut() {
+
+function signOut() {
     // Clear tokens from memory and localStorage
     accessToken = null;
     tokenExpiry = null;
@@ -42,12 +42,6 @@ function handleSignOut() {
     if (accessToken) {
         google.accounts.oauth2.revoke(accessToken);
     }
-
-    document.getElementById('signedOut').style.display = 'block';
-    document.getElementById('signedIn').style.display = 'none';
-    document.getElementById('appContent').classList.add('disabled');
-    document.getElementById('userEmail').textContent = '';
-    renderTasks();
 }
 
 // Check if token is expired or about to expire (within 5 minutes)

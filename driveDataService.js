@@ -208,16 +208,16 @@ class DriveDataService {
         const lastColumn = String.fromCharCode(65 + schemaKeys.length - 1); // A + length - 1
 
         // Clear existing task data (from row 2 onwards)
-        await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A2:${lastColumn}:clear`,
-            {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${this.accessToken}`,
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
+        // await fetch(
+        //     `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A2:${lastColumn}:clear`,
+        //     {
+        //         method: 'POST',
+        //         headers: {
+        //             Authorization: `Bearer ${this.accessToken}`,
+        //             'Content-Type': 'application/json'
+        //         }
+        //     }
+        // );
 
         // Upload client data
         const values = tasks

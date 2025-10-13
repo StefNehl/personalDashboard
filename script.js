@@ -4,6 +4,7 @@ let timerIntervals = {};
 let dataService = null;
 let lastSync = null;
 const syncIntervalInSeconds = 1;
+let syncTaskId = null;
 
 async function initDataService() {
     try {
@@ -14,6 +15,34 @@ async function initDataService() {
         console.error('Error initializing spreadsheet:', error);
         updateSyncStatus('Error: Could not initialize spreadsheet');
     }
+}
+
+async function handleSignIn() {
+    signIn();
+    await ensureSyncTaskStarted();
+}
+
+function handleSignOut() {
+    signOut();
+    stopTaskSync();
+
+    document.getElementById('signedOut').style.display = 'block';
+    document.getElementById('signedIn').style.display = 'none';
+    document.getElementById('appContent').classList.add('disabled');
+    document.getElementById('userEmail').textContent = '';
+    renderTasks();
+}
+
+async function ensureSyncTaskStarted() {
+    if (syncTaskId) return;
+    await saveTasksToSheet();
+    syncTaskId = setInterval(saveTasksToSheet, 10000);
+}
+
+function stopTaskSync() {
+    if (!syncTaskId) return;
+    clearInterval(syncTaskId);
+    syncTaskId = null;
 }
 
 async function loadTasksFromSheet() {
@@ -236,5 +265,5 @@ window.onload = async () => {
     initializeGoogleAuth();
     renderTasks();
     await restoreSession();
-
+    await ensureSyncTaskStarted();
 };
