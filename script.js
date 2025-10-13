@@ -1,9 +1,11 @@
 // Application state
 let tasks = undefined;
 let timerIntervals = {};
+/** type {DriveDataService} */
 let dataService = null;
 let lastSync = null;
 const syncIntervalInSeconds = 1;
+/** @type {number | null} */
 let syncTaskId = null;
 
 async function initDataService() {
@@ -217,7 +219,7 @@ function renderTasks() {
             <li class="task-item ${task.isRunning ? 'running' : ''}">
                 <div class="task-info">
                     <div class="task-name">${task.name}</div>
-                    <div class="task-time" id="time-${task.id}">${formatTime(task.elapsed)}</div>
+                    <div class="task-time" id="time-${task.id}">${formatTime(task.elapsed * 1000)}</div>
                 </div>
                 <div class="task-actions">
                     ${task.isRunning
@@ -243,7 +245,7 @@ function renderTasks() {
             <li class="task-item">
                 <div class="task-info">
                     <div class="task-name">${task.name}</div>
-                    <div class="task-time">${formatTime(task.elapsed)}</div>
+                    <div class="task-time">${formatTime(task.elapsed * 1000)}</div>
                 </div>
                 <div class="task-actions">
                     <button class="btn btn-delete" onclick="deleteTask(${task.id})">Delete</button>
@@ -261,7 +263,7 @@ document.getElementById('taskInput').addEventListener('keypress', async (e) => {
 
 // Initialize on load
 window.onload = async () => {
-    dataService = await getInstance();
+    dataService = new DriveDataService('Time Tracker Data');
     initializeGoogleAuth();
     renderTasks();
     await restoreSession();

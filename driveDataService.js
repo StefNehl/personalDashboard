@@ -34,13 +34,6 @@ const TaskDataSchema = {
  */
 
 /**
- * @returns {DriveDataService}
- */
-function getInstance() {
-    return new DriveDataService();
-}
-
-/**
  * @param headers
  * @returns {boolean}
  */
@@ -51,11 +44,13 @@ function validateHeaderExact(headers) {
 }
 
 class DriveDataService {
-    constructor() {
+    constructor(fileName) {
         /** @type {string | null} */
         this.accessToken = null;
         /** @type {string | null} */
         this.spreadsheetId = null;
+        /** @type {string} */
+        this.fileName = fileName;
     }
 
     /**
@@ -80,7 +75,7 @@ class DriveDataService {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        properties: {title: 'Time Tracker Data'},
+                        properties: {title: this.fileName},
                         sheets: [{
                             properties: {title: 'Tasks'}
                         }]
@@ -137,7 +132,7 @@ class DriveDataService {
      */
     async getSpreadSheetId() {
         const searchResponse = await fetch(
-            `https://www.googleapis.com/drive/v3/files?q=name='Time Tracker Data' and mimeType='application/vnd.google-apps.spreadsheet'`,
+            `https://www.googleapis.com/drive/v3/files?q=name='${this.fileName}' and mimeType='application/vnd.google-apps.spreadsheet'`,
             { headers: { Authorization: `Bearer ${getAccessToken()}` } }
         );
         const searchData = await searchResponse.json();
@@ -184,7 +179,7 @@ class DriveDataService {
             if (key === 'id') {
                 task[key] = parseInt(value);
             } else if (key === 'elapsed') {
-                task[key] = parseInt(value) * 1000;
+                task[key] = parseInt(value);
             } else if (key === 'isRunning' || key === 'isFinished' || key === 'isDeleted') {
                 task[key] = value === 'TRUE' || value === true;
             } else if (key === 'currentStartTime') {
@@ -224,7 +219,7 @@ class DriveDataService {
             .map(task => schemaKeys.map(key => {
                 // Convert values for storage
                 if (key === 'elapsed') {
-                    return Math.floor(task[key] / 1000);
+                    return task[key];
                 }
                 return task[key];
             }));
