@@ -10,6 +10,7 @@ let syncTaskId = null;
 
 async function initDataService() {
     await ensureValidToken();
+    dataService = new DriveDataService('Time Tracker Data', accessToken, TaskDataSchema);
     const result = await dataService.initDataService();
     if (result.failedToInit) {
         throw new Error('Failed to initialize data service');
@@ -255,7 +256,6 @@ document.getElementById('taskInput').addEventListener('keypress', async (e) => {
 
 // Initialize on load
 window.onload = async () => {
-    dataService = new DriveDataService('Time Tracker Data');
     initializeGoogleAuth();
     const sessionRestored = await restoreSession();
     if (sessionRestored) await ensureSyncTaskStarted();
