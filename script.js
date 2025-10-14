@@ -128,8 +128,8 @@ function startTimer(taskId) {
     }
 
     timerIntervals[taskId] = setInterval(() => {
-        const now = Date.now();
-        const elapsed = task.elapsed + (now - task.currentStartTime);
+        const currentlyElapsedTimeInSeconds = Math.floor(Date.now() - task.currentStartTime) / 1000;
+        const elapsed = task.elapsed + currentlyElapsedTimeInSeconds;
         updateTaskDisplay(taskId, elapsed);
     }, 100);
 
@@ -143,7 +143,7 @@ async function stopTimer(taskId) {
 
     task.isRunning = false;
     const now = Date.now();
-    task.elapsed += (now - task.currentStartTime);
+    task.elapsed += Math.floor((now - task.currentStartTime) / 1000);
     task.currentStartTime = null;
 
     clearInterval(timerIntervals[taskId]);
@@ -189,7 +189,7 @@ function formatTime(ms) {
 function updateTaskDisplay(taskId, elapsed) {
     const timeElement = document.getElementById(`time-${taskId}`);
     if (timeElement) {
-        timeElement.textContent = formatTime(elapsed);
+        timeElement.textContent = formatTime(elapsed * 1000);
     }
 }
 
