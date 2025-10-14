@@ -3,7 +3,9 @@ const CLIENT_ID = '856828042385-77s8aigmq798rp3puhcj02mp3pib8js7.apps.googleuser
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email';
 
 let tokenClient;
+/** @param {string | null} accessToken */
 let accessToken = null;
+/** @param {number | null} tokenExpiry */
 let tokenExpiry = null;
 
 // Initialize Google Identity Services
@@ -25,14 +27,13 @@ function initializeGoogleAuth() {
     });
 }
 
-function signIn() {
-    tokenClient.requestAccessToken();
+async function signIn() {
+    await tokenClient.requestAccessToken();
 }
 
 
 function signOut() {
     // Clear tokens from memory and localStorage
-    accessToken = null;
     tokenExpiry = null;
     spreadsheetId = null;
     localStorage.removeItem('accessToken');
@@ -42,6 +43,7 @@ function signOut() {
     if (accessToken) {
         google.accounts.oauth2.revoke(accessToken);
     }
+    accessToken = null;
 }
 
 // Check if token is expired or about to expire (within 5 minutes)
@@ -94,39 +96,44 @@ async function onSignIn() {
 
         // Load tasks
         await loadTasksFromSheet();
+        await ensureSyncTaskStarted();
     } catch (error) {
         console.error('Error during sign in:', error);
+        updateSyncStatus('Error during sign in');
         handleSignOut();
     }
 }
 
 // Restore session from localStorage
+/** @returns {Promise<boolean>} */
 async function restoreSession() {
     const storedToken = localStorage.getItem('accessToken');
     const storedExpiry = localStorage.getItem('tokenExpiry');
+    
+    if (!storedToken || !storedExpiry) return false;
 
-    if (storedToken && storedExpiry) {
-        accessToken = storedToken;
-        tokenExpiry = parseInt(storedExpiry);
+    accessToken = storedToken;
+    tokenExpiry = parseInt(storedExpiry);
 
-        // Check if token is still valid
-        if (!isTokenExpired()) {
-            // Token is still valid, sign in automatically
-            await onSignIn();
-        } else {
-            // Token expired, try to refresh
-            try {
-                await refreshAccessToken();
-            } catch (error) {
-                console.log('Could not refresh token, user needs to sign in again');
-                // Clear invalid tokens
-                localStorage.removeItem('accessToken');
-                localStorage.removeItem('tokenExpiry');
-                accessToken = null;
-                tokenExpiry = null;
-            }
-        }
+    // Check if the token is still valid
+    if (!isTokenExpired()) {
+        // Token is still valid, sign in automatically
+        await onSignIn();
+        return true;
+    } 
+    
+    // Token expired, try to refresh
+    try {
+        await refreshAccessToken();
+    } catch (error) {
+        console.log('Could not refresh token, user needs to sign in again');
+        // Clear invalid tokens
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('tokenExpiry');
+        accessToken = null;
+        tokenExpiry = null;
     }
+    return false;
 }
 
 // Get the current access token

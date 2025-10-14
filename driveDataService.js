@@ -31,35 +31,35 @@ const TaskDataSchema = {
  * @typedef {Object} InitResponse
  * @property {boolean} createdDataSheet
  * @property {boolean} syncedHeaders
+ * @property {boolean} failedToInit
+ * @property {Response | null} failedResponse
  */
-
-/**
- * @param headers
- * @returns {boolean}
- */
-function validateHeaderExact(headers) {
-    const schemaKeys = Object.keys(TaskDataSchema);
-    return headers.length === schemaKeys.length &&
-        headers.every((header, i) => header === schemaKeys[i]);
-}
 
 class DriveDataService {
-    constructor(fileName) {
+    /**
+     * @param {string} fileName
+     * @param {string} accessToken
+     * @param {Object<string, string>} dataSchema
+     */
+    constructor(fileName, accessToken, dataSchema) {
         /** @type {string | null} */
         this.accessToken = null;
         /** @type {string | null} */
         this.spreadsheetId = null;
         /** @type {string} */
         this.fileName = fileName;
+        /** @type {string} */
+        this.accessToken = accessToken;
+        /** @type {Object<string, string>} */
+        this.dataSchema = dataSchema;
     }
 
+    
     /**
      * Initialize the data service
-     * @param {string} accessToken
      * @returns {Promise<InitResponse>} Returns true if a data sheet was created, false if it already exists
      */
-    async initDataService(accessToken) {
-        this.accessToken = accessToken;
+    async initDataService() {
         this.spreadsheetId = await this.getSpreadSheetId();
         
         let initSpreadSheet = false;
@@ -86,10 +86,20 @@ class DriveDataService {
             this.spreadsheetId = createData.spreadsheetId;
             initSpreadSheet = true;
         }
-        const headers = await this.getHeaders();
-        const headersCorrect = validateHeaderExact(headers);
+        const headersResponse = await this.getHeaders();
+        if (!headersResponse.ok) {
+            return {
+                createdDataSheet: initSpreadSheet,
+                syncedHeaders: initHeaders,
+                failedToInit: true,
+                failedResponse: headersResponse
+            };
+        }
+        const headers = await headersResponse.json();
+        if (!headers.values || headers.values.length === 0) {}
+        const headersCorrect = this.validateHeaderExact(headers);
         if (headersCorrect === false) {
-            const schemaKeys = Object.keys(TaskDataSchema);
+            const schemaKeys = Object.keys(this.dataSchema);
             await fetch(
                 `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A1:1?valueInputOption=RAW`,
                 {
@@ -107,23 +117,33 @@ class DriveDataService {
         }
         return {
             createdDataSheet: initSpreadSheet,
-            syncedHeaders: initHeaders
+            syncedHeaders: initHeaders,
+            failedToInit: false,
+            failedResponse: null
         };
+    }
+
+    /**
+     * @param {string[]} headers
+     * @returns {boolean}
+     */
+    validateHeaderExact(headers) {
+        const schemaKeys = Object.keys(TaskDataSchema);
+        return headers.length === schemaKeys.length &&
+            headers.every((header, i) => header === schemaKeys[i]);
     }
     
     /**
-     * @returns {Promise<string[]>}
+     * @returns {Promise<Response>}
      */
     async getHeaders() {
-        const response = await fetch(
+        return fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A1:1`,
             {
                 method: 'GET',
                 headers: { Authorization: `Bearer ${this.accessToken}`,},
             }
         );
-        const data = await response.json();
-        return data.values;
     }
 
 
@@ -147,7 +167,7 @@ class DriveDataService {
      */
     async loadTasks() {
         const tasks = [];
-        const schemaKeys = Object.keys(TaskDataSchema);
+        const schemaKeys = Object.keys(this.dataSchema);
         const lastColumn = String.fromCharCode(65 + schemaKeys.length - 1); // A + length - 1
 
         const response = await fetch(
@@ -201,18 +221,6 @@ class DriveDataService {
         if (!tasks || tasks.length === 0) return null;
         const schemaKeys = Object.keys(TaskDataSchema);
         const lastColumn = String.fromCharCode(65 + schemaKeys.length - 1); // A + length - 1
-
-        // Clear existing task data (from row 2 onwards)
-        // await fetch(
-        //     `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/Tasks!A2:${lastColumn}:clear`,
-        //     {
-        //         method: 'POST',
-        //         headers: {
-        //             Authorization: `Bearer ${this.accessToken}`,
-        //             'Content-Type': 'application/json'
-        //         }
-        //     }
-        // );
 
         // Upload client data
         const values = tasks

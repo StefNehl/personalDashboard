@@ -9,19 +9,16 @@ const syncIntervalInSeconds = 1;
 let syncTaskId = null;
 
 async function initDataService() {
-    try {
-        await ensureValidToken();
-        const result = await dataService.initDataService(getAccessToken());
-        updateSyncStatus(result);
-    } catch (error) {
-        console.error('Error initializing spreadsheet:', error);
-        updateSyncStatus('Error: Could not initialize spreadsheet');
+    await ensureValidToken();
+    const result = await dataService.initDataService();
+    if (result.failedToInit) {
+        throw new Error('Failed to initialize data service');
     }
+    updateSyncStatus(result);
 }
 
 async function handleSignIn() {
-    signIn();
-    await ensureSyncTaskStarted();
+    await signIn();
 }
 
 function handleSignOut() {
@@ -48,16 +45,11 @@ function stopTaskSync() {
 }
 
 async function loadTasksFromSheet() {
-    try {
-        await ensureValidToken();
-        updateSyncStatus('Loading tasks...');
-        tasks = await dataService.loadTasks();
-        renderTasks();
-        updateSyncStatus('Tasks loaded ✓');
-    } catch (error) {
-        console.error('Error loading tasks:', error);
-        updateSyncStatus('Error loading tasks');
-    }
+    await ensureValidToken();
+    updateSyncStatus('Loading tasks...');
+    tasks = await dataService.loadTasks();
+    renderTasks();
+    updateSyncStatus('Tasks loaded ✓');
 }
 
 async function saveTasksToSheet() {
@@ -265,7 +257,7 @@ document.getElementById('taskInput').addEventListener('keypress', async (e) => {
 window.onload = async () => {
     dataService = new DriveDataService('Time Tracker Data');
     initializeGoogleAuth();
+    const sessionRestored = await restoreSession();
+    if (sessionRestored) await ensureSyncTaskStarted();
     renderTasks();
-    await restoreSession();
-    await ensureSyncTaskStarted();
 };
