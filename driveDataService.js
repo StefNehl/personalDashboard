@@ -66,7 +66,7 @@ class DriveDataService {
         let initHeaders = false;
         
         if (!this.spreadsheetId) {
-            const createResponse = await fetch(
+            await fetch(
                 'https://sheets.googleapis.com/v4/spreadsheets',
                 {
                     method: 'POST',
