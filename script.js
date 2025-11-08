@@ -203,6 +203,9 @@ function renderTasks() {
 
   const activeTasks = tasks?.filter(task => !task.isFinished && !task.isDeleted) ?? [];
   const finishedTasks = tasks?.filter(task => task.isFinished && !task.isDeleted) ?? [];
+  console.log(tasks[0].isDeleted, tasks[0].isDeleted === false);
+  console.log(activeTasks);
+  console.log(finishedTasks);
 
   // Render active tasks
   if (activeTasks.length === 0) {
